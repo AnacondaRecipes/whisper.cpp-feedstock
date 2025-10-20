@@ -1,0 +1,61 @@
+{% set name = "whisper.cpp" %}
+{% set version = "1.8.2" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/ggml-org/{{ name }}/archive/v{{ version }}.tar.gz
+  sha256: bcee25589bb8052d9e155369f6759a05729a2022d2a8085c1aa4345108523077
+
+build:
+  number: 0
+  skip: true  # [py<39]
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - cmake
+    - ninja
+    - git
+    - pkg-config
+    - libgomp  # [linux]
+    - llvm-openmp  # [not linux]
+  host:
+    - libgomp  # [linux]
+    - llvm-openmp  # [not linux]
+  run:
+    - libgomp  # [linux]
+    - llvm-openmp  # [not linux]
+  run_constrained:
+    # Conflict with llama.cpp since both vendor ggml
+    - llama.cpp <0.0.0a0
+
+test:
+  commands:
+    - whisper-cli --help
+    - test -f $PREFIX/lib/libwhisper${SHLIB_EXT}  # [unix]
+    - test -f $PREFIX/lib/libggml${SHLIB_EXT}  # [unix]
+    - test -f $PREFIX/include/whisper.h  # [unix]
+    - test -f $PREFIX/include/ggml.h  # [unix]
+    - if not exist %LIBRARY_BIN%\\whisper-cli.exe exit 1  # [win]
+    - if not exist %LIBRARY_LIB%\\whisper.lib exit 1  # [win]
+    - if not exist %LIBRARY_INC%\\whisper.h exit 1  # [win]
+
+about:
+  home: https://github.com/ggml-org/whisper.cpp
+  dev_url: https://github.com/ggml-org/whisper.cpp
+  summary: Port of OpenAI's Whisper model in C/C++
+  description: |
+    whisper.cpp is a high-performance inference of OpenAI's Whisper automatic speech recognition (ASR)
+    model implemented in C/C++. It provides efficient speech-to-text transcription with support for
+    multiple languages and hardware acceleration options including Metal (Apple Silicon) and BLAS libraries.
+  license: MIT
+  license_file: LICENSE
+
+extra:
+  feedstock-name: whisper.cpp
+  recipe-maintainers:
+    - xkong-anaconda
