@@ -15,17 +15,16 @@ build:
 
 requirements:
   build:
+    - {{ stdlib('c') }}
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
     - cmake
     - ninja
-    - git
+    - git  # [not win]
     - pkg-config
     - libgomp  # [linux]
     - llvm-openmp  # [not linux]
   host:
-    - libgomp  # [linux]
-    - llvm-openmp  # [not linux]
   run:
     - libgomp  # [linux]
     - llvm-openmp  # [not linux]
@@ -47,6 +46,7 @@ test:
 about:
   home: https://github.com/ggml-org/whisper.cpp
   dev_url: https://github.com/ggml-org/whisper.cpp
+  doc_url: https://github.com/ggml-org/whisper.cpp/blob/master/README.md
   summary: Port of OpenAI's Whisper model in C/C++
   description: |
     whisper.cpp is a high-performance inference of OpenAI's Whisper automatic speech recognition (ASR)
