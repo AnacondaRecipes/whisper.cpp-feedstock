@@ -23,13 +23,21 @@ if [[ "${gpu_variant:-none}" == "cuda-12" ]]; then
     echo "Building with CUDA support (cuBLAS)"
 fi
 
-# Handle Metal variant (macOS ARM64 only)
-if [[ "${gpu_variant:-none}" == "metal" ]]; then
-    if [[ "${target_platform}" == "osx-arm64" ]]; then
-        WHISPER_METAL=ON
-        echo "Building with Metal support for Apple Silicon"
-    else
-        echo "Metal variant requested but not on osx-arm64, disabling Metal"
+# Handle Metal variant (matching llama.cpp approach)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    if [[ "${gpu_variant:-none}" == "none" ]]; then
+        # Explicitly disable Metal for none variant to prevent auto-detection
+        # Metal requires macOS 13.0+ for gpuAddress property
+        WHISPER_METAL=OFF
+        echo "Building CPU-only variant (Metal disabled)"
+    elif [[ "${gpu_variant:-none}" == "metal" ]]; then
+        if [[ "${target_platform}" == "osx-arm64" ]]; then
+            WHISPER_METAL=ON
+            echo "Building with Metal support for Apple Silicon"
+        else
+            echo "Metal variant requested but not on osx-arm64, disabling Metal"
+            WHISPER_METAL=OFF
+        fi
     fi
 fi
 

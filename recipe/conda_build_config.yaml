@@ -11,17 +11,14 @@ blas_impl:
 # GPU acceleration variants
 gpu_variant:
   - none
-  - metal                      # [osx and arm64]
+  - metal                      # [osx]
   - cuda-12                    # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
 
-# whisper.cpp v1.8.2 Metal support requires macOS 13.0+ for MTLBuffer.gpuAddress
-# We require 13.0+ for all osx-arm64 builds for consistency (matching llama.cpp approach)
-MACOSX_DEPLOYMENT_TARGET:      # [osx and arm64]
-  - 13.0                       # [osx and arm64]
-
-# Use SDK 13.3+ to support Metal features (gpuAddress property)
+# whisper.cpp Metal support requires MTLBuffer.gpuAddress (macOS 13.0+)
+# Use SDK 14.5 like llama.cpp for all macOS builds
+# This allows building with latest SDK while supporting older runtime versions via deployment target
 OSX_SDK_VER:                   # [osx]
-  - 13.3                       # [osx]
+  - 14.5                       # [osx]
 
 # CUDA compiler configuration
 cuda_compiler_version:         # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
