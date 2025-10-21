@@ -1,2 +1,38 @@
-MACOSX_SDK_VERSION:             # [osx and x86_64]
-  - 10.15                       # [osx and x86_64]
+# This feedstock builds whisper.cpp with different acceleration backends
+# Similar structure to llama.cpp-feedstock since both use GGML
+
+# Build different BLAS implementations for CPU acceleration
+blas_impl:
+  - mkl                        # [win or (linux and x86_64)]
+  - openblas                   # [linux]
+  - accelerate                 # [osx]
+  - cublas                     # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+
+# GPU acceleration variants
+gpu_variant:
+  - none
+  - metal                      # [osx]
+  - cuda-12                    # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+
+# Metal builds require macOS 13.0+ for gpuAddress property
+# whisper.cpp Metal support introduced in 1.8.x
+MACOSX_DEPLOYMENT_TARGET:      # [osx and arm64]
+  - 13.0                       # [osx and arm64]
+
+# Metal builds now require the MTLBuffer gpuAddress property, introduced in macOS 13.0
+OSX_SDK_VER:                   # [osx]
+  - 13.3                       # [osx]
+
+# CUDA compiler configuration
+cuda_compiler_version:         # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+  - none                       # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+  - 12.4                       # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+
+cuda_compiler:                 # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+- cuda-nvcc                    # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+
+# Zip gpu_variant with cuda_compiler_version to ensure they're built together
+zip_keys:                      # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+  -                            # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+    - gpu_variant              # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+    - cuda_compiler_version    # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]

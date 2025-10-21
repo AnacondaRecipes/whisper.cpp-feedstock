@@ -9,28 +9,58 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     export CXXFLAGS="${CXXFLAGS} -D_LIBCPP_DISABLE_AVAILABILITY"
 fi
 
-# Determine Metal support for macOS ARM64
-# Metal gpuAddress property requires macOS 13.0+ (available since whisper.cpp 1.8.x)
-if [[ "${target_platform}" == "osx-arm64" ]]; then
-    # Extract deployment target version (e.g., "12.1" -> "12")
-    MACOS_VERSION=$(echo "${MACOSX_DEPLOYMENT_TARGET:-0}" | cut -d. -f1)
-    if [[ "${MACOS_VERSION}" -ge 13 ]]; then
-        WHISPER_METAL=ON
-    else
-        echo "Disabling Metal support for macOS < 13.0 (current target: ${MACOSX_DEPLOYMENT_TARGET})"
-        WHISPER_METAL=OFF
-    fi
-else
-    WHISPER_METAL=OFF
+# Determine GPU acceleration settings based on variant
+# Default: no GPU acceleration
+WHISPER_CUDA=OFF
+WHISPER_METAL=OFF
+WHISPER_BLAS=OFF
+WHISPER_OPENBLAS=OFF
+WHISPER_CUBLAS=OFF
+
+# Handle CUDA variant
+if [[ "${gpu_variant:-none}" == "cuda-12" ]]; then
+    WHISPER_CUDA=ON
+    WHISPER_CUBLAS=ON
+    WHISPER_BLAS=ON
+    echo "Building with CUDA support (cuBLAS)"
 fi
 
+# Handle Metal variant (macOS ARM64 only)
+if [[ "${gpu_variant:-none}" == "metal" ]]; then
+    if [[ "${target_platform}" == "osx-arm64" ]]; then
+        WHISPER_METAL=ON
+        echo "Building with Metal support for Apple Silicon"
+    else
+        echo "Metal variant requested but not on osx-arm64, disabling Metal"
+    fi
+fi
+
+# Handle CPU BLAS variants
+if [[ "${gpu_variant:-none}" == "none" ]]; then
+    WHISPER_BLAS=ON
+
+    if [[ "${blas_impl:-}" == "openblas" ]]; then
+        WHISPER_OPENBLAS=ON
+        echo "Building with OpenBLAS support"
+    elif [[ "${blas_impl:-}" == "mkl" ]]; then
+        echo "Building with MKL support (via BLAS)"
+    elif [[ "${blas_impl:-}" == "accelerate" ]]; then
+        echo "Building with Accelerate framework (macOS)"
+    fi
+fi
+
+# Configure with CMake
 cmake -S . -B build -GNinja \
     ${CMAKE_ARGS} \
     -DCMAKE_INSTALL_PREFIX=${PREFIX} \
     -DCMAKE_PREFIX_PATH=${PREFIX} \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=ON \
+    -DGGML_CUDA=${WHISPER_CUDA} \
     -DGGML_METAL=${WHISPER_METAL} \
+    -DGGML_BLAS=${WHISPER_BLAS} \
+    -DGGML_OPENBLAS=${WHISPER_OPENBLAS} \
+    -DGGML_CUBLAS=${WHISPER_CUBLAS} \
     -DWHISPER_BUILD_EXAMPLES=ON \
     -DWHISPER_BUILD_TESTS=OFF \
     -DWHISPER_BUILD_SERVER=ON
