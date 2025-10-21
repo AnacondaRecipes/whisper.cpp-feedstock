@@ -11,16 +11,18 @@ blas_impl:
 # GPU acceleration variants
 gpu_variant:
   - none
-  - metal                      # [osx]
+  - metal                      # [osx and arm64]
   - cuda-12                    # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
 
 # Metal builds require macOS 13.0+ for gpuAddress property
-# whisper.cpp Metal support introduced in 1.8.x
+# Non-Metal builds can use macOS 12.1 for broader compatibility
 MACOSX_DEPLOYMENT_TARGET:      # [osx and arm64]
+  - 12.1                       # [osx and arm64]
   - 13.0                       # [osx and arm64]
 
-# Metal builds now require the MTLBuffer gpuAddress property, introduced in macOS 13.0
+# Metal builds require SDK 13.3+ for MTLBuffer.gpuAddress property
 OSX_SDK_VER:                   # [osx]
+  - 12.1                       # [osx]
   - 13.3                       # [osx]
 
 # CUDA compiler configuration
@@ -31,8 +33,14 @@ cuda_compiler_version:         # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux
 cuda_compiler:                 # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
 - cuda-nvcc                    # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
 
-# Zip gpu_variant with cuda_compiler_version to ensure they're built together
-zip_keys:                      # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+# Zip keys to ensure variants are built together
+zip_keys:
+  # Zip gpu_variant with deployment targets for osx-arm64
+  -                            # [osx and arm64]
+    - gpu_variant              # [osx and arm64]
+    - MACOSX_DEPLOYMENT_TARGET # [osx and arm64]
+    - OSX_SDK_VER              # [osx and arm64]
+  # Zip gpu_variant with cuda_compiler_version for CUDA builds
   -                            # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
     - gpu_variant              # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
     - cuda_compiler_version    # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
