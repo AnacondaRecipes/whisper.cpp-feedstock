@@ -17,20 +17,28 @@ if "%gpu_variant%"=="cuda-12" (
     echo Building with CUDA support ^(cuBLAS^)
 )
 
-:: Handle CPU BLAS variants
-if "%gpu_variant%"=="none" (
+:: Handle CPU BLAS variants (matching llama.cpp-feedstock approach)
+if "%blas_impl%"=="mkl" (
     set WHISPER_BLAS=ON
-
-    if "%blas_impl%"=="openblas" (
-        set WHISPER_OPENBLAS=ON
-        echo Building with OpenBLAS support
-    ) else if "%blas_impl%"=="mkl" (
-        echo Building with MKL support ^(via BLAS^)
-    )
+    set WHISPER_ACCELERATE=OFF
+    set WHISPER_OPENBLAS=OFF
+    set WHISPER_BLAS_VENDOR=Intel10_64_dyn
+    echo Building with MKL support ^(via BLAS^)
+) else if "%blas_impl%"=="openblas" (
+    set WHISPER_BLAS=ON
+    set WHISPER_ACCELERATE=OFF
+    set WHISPER_OPENBLAS=ON
+    set WHISPER_BLAS_VENDOR=OpenBLAS
+    echo Building with OpenBLAS support
+) else (
+    set WHISPER_BLAS=OFF
+    set WHISPER_ACCELERATE=OFF
+    set WHISPER_OPENBLAS=OFF
+    set WHISPER_BLAS_VENDOR=
 )
 
 :: Configure with CMake
-cmake -S . -B build -GNinja ^
+set CMAKE_FLAGS=-S . -B build -GNinja ^
     %CMAKE_ARGS% ^
     -DCMAKE_INSTALL_PREFIX=%LIBRARY_PREFIX% ^
     -DCMAKE_PREFIX_PATH=%LIBRARY_PREFIX% ^
@@ -39,11 +47,19 @@ cmake -S . -B build -GNinja ^
     -DGGML_CUDA=%WHISPER_CUDA% ^
     -DGGML_METAL=%WHISPER_METAL% ^
     -DGGML_BLAS=%WHISPER_BLAS% ^
+    -DGGML_ACCELERATE=%WHISPER_ACCELERATE% ^
     -DGGML_OPENBLAS=%WHISPER_OPENBLAS% ^
     -DGGML_CUBLAS=%WHISPER_CUBLAS% ^
     -DWHISPER_BUILD_EXAMPLES=ON ^
     -DWHISPER_BUILD_TESTS=OFF ^
     -DWHISPER_BUILD_SERVER=ON
+
+:: Add BLAS vendor if specified
+if defined WHISPER_BLAS_VENDOR (
+    set CMAKE_FLAGS=%CMAKE_FLAGS% -DGGML_BLAS_VENDOR=%WHISPER_BLAS_VENDOR%
+)
+
+cmake %CMAKE_FLAGS%
 if !ERRORLEVEL! NEQ 0 (echo "ERROR: cmake configure failed" & exit /b !ERRORLEVEL!)
 
 cmake --build build --config Release --verbose

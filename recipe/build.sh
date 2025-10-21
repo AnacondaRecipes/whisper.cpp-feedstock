@@ -35,35 +35,57 @@ if [[ "${gpu_variant:-none}" == "metal" ]]; then
     fi
 fi
 
-# Handle CPU BLAS variants
-if [[ "${gpu_variant:-none}" == "none" ]]; then
+# Handle CPU BLAS variants (matching llama.cpp-feedstock approach)
+if [[ "${blas_impl:-}" == "accelerate" ]]; then
     WHISPER_BLAS=ON
-
-    if [[ "${blas_impl:-}" == "openblas" ]]; then
-        WHISPER_OPENBLAS=ON
-        echo "Building with OpenBLAS support"
-    elif [[ "${blas_impl:-}" == "mkl" ]]; then
-        echo "Building with MKL support (via BLAS)"
-    elif [[ "${blas_impl:-}" == "accelerate" ]]; then
-        echo "Building with Accelerate framework (macOS)"
-    fi
+    WHISPER_ACCELERATE=ON
+    WHISPER_OPENBLAS=OFF
+    WHISPER_BLAS_VENDOR="Apple"
+    echo "Building with Accelerate framework (macOS)"
+elif [[ "${blas_impl:-}" == "mkl" ]]; then
+    WHISPER_BLAS=ON
+    WHISPER_ACCELERATE=OFF
+    WHISPER_OPENBLAS=OFF
+    WHISPER_BLAS_VENDOR="Intel10_64_dyn"
+    echo "Building with MKL support (via BLAS)"
+elif [[ "${blas_impl:-}" == "openblas" ]]; then
+    WHISPER_BLAS=ON
+    WHISPER_ACCELERATE=OFF
+    WHISPER_OPENBLAS=ON
+    WHISPER_BLAS_VENDOR="OpenBLAS"
+    echo "Building with OpenBLAS support"
+else
+    WHISPER_BLAS=OFF
+    WHISPER_ACCELERATE=OFF
+    WHISPER_OPENBLAS=OFF
+    WHISPER_BLAS_VENDOR=""
 fi
 
 # Configure with CMake
-cmake -S . -B build -GNinja \
-    ${CMAKE_ARGS} \
-    -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-    -DCMAKE_PREFIX_PATH=${PREFIX} \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_SHARED_LIBS=ON \
-    -DGGML_CUDA=${WHISPER_CUDA} \
-    -DGGML_METAL=${WHISPER_METAL} \
-    -DGGML_BLAS=${WHISPER_BLAS} \
-    -DGGML_OPENBLAS=${WHISPER_OPENBLAS} \
-    -DGGML_CUBLAS=${WHISPER_CUBLAS} \
-    -DWHISPER_BUILD_EXAMPLES=ON \
-    -DWHISPER_BUILD_TESTS=OFF \
+CMAKE_FLAGS=(
+    -S . -B build -GNinja
+    ${CMAKE_ARGS}
+    -DCMAKE_INSTALL_PREFIX=${PREFIX}
+    -DCMAKE_PREFIX_PATH=${PREFIX}
+    -DCMAKE_BUILD_TYPE=Release
+    -DBUILD_SHARED_LIBS=ON
+    -DGGML_CUDA=${WHISPER_CUDA}
+    -DGGML_METAL=${WHISPER_METAL}
+    -DGGML_BLAS=${WHISPER_BLAS}
+    -DGGML_ACCELERATE=${WHISPER_ACCELERATE}
+    -DGGML_OPENBLAS=${WHISPER_OPENBLAS}
+    -DGGML_CUBLAS=${WHISPER_CUBLAS}
+    -DWHISPER_BUILD_EXAMPLES=ON
+    -DWHISPER_BUILD_TESTS=OFF
     -DWHISPER_BUILD_SERVER=ON
+)
+
+# Add BLAS vendor if specified
+if [[ -n "${WHISPER_BLAS_VENDOR}" ]]; then
+    CMAKE_FLAGS+=(-DGGML_BLAS_VENDOR=${WHISPER_BLAS_VENDOR})
+fi
+
+cmake "${CMAKE_FLAGS[@]}"
 
 cmake --build build --config Release --verbose
 cmake --install build
