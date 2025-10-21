@@ -11,7 +11,7 @@ fi
 
 # Determine Metal support for macOS ARM64
 # Metal gpuAddress property requires macOS 13.0+ (available since whisper.cpp 1.8.x)
-if [[ "$OSTYPE" == "darwin"* ]] && [[ "${target_platform}" == "osx-arm64" ]]; then
+if [[ "${target_platform}" == "osx-arm64" ]]; then
     # Extract deployment target version (e.g., "12.1" -> "12")
     MACOS_VERSION=$(echo "${MACOSX_DEPLOYMENT_TARGET:-0}" | cut -d. -f1)
     if [[ "${MACOS_VERSION}" -ge 13 ]]; then

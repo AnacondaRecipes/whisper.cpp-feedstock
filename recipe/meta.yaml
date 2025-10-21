@@ -11,7 +11,6 @@ source:
 
 build:
   number: 0
-  skip: true  # [py<39]
 
 requirements:
   build:
@@ -19,8 +18,8 @@ requirements:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
     - cmake
-    - ninja
-    - git  # [not win]
+    - ninja-base
+    - git  # [not win] - Used by CMake git-vars module for version detection
     - pkg-config
     - libgomp  # [linux]
     - llvm-openmp  # [not linux]
@@ -34,14 +33,46 @@ requirements:
 
 test:
   commands:
+    # Test command-line tools
     - whisper-cli --help
+
+    # Unix: Test binaries
+    - test -f $PREFIX/bin/vad-speech-segments  # [unix]
+    - test -f $PREFIX/bin/whisper-bench  # [unix]
+    - test -f $PREFIX/bin/whisper-cli  # [unix]
+    - test -f $PREFIX/bin/whisper-server  # [unix]
+
+    # Unix: Test libraries
     - test -f $PREFIX/lib/libwhisper${SHLIB_EXT}  # [unix]
     - test -f $PREFIX/lib/libggml${SHLIB_EXT}  # [unix]
+
+    # Unix: Test headers
     - test -f $PREFIX/include/whisper.h  # [unix]
     - test -f $PREFIX/include/ggml.h  # [unix]
+    - test -f $PREFIX/include/gguf.h  # [unix]
+
+    # Unix: Test pkg-config
+    - test -f $PREFIX/lib/pkgconfig/whisper.pc  # [unix]
+
+    # Windows: Test DLLs and executables
+    - if not exist %LIBRARY_BIN%\\ggml.dll exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\whisper.dll exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\vad-speech-segments.exe exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\whisper-bench.exe exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\whisper-cli.exe exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\whisper-server.exe exit 1  # [win]
+
+    # Windows: Test libraries
+    - if not exist %LIBRARY_LIB%\\ggml.lib exit 1  # [win]
     - if not exist %LIBRARY_LIB%\\whisper.lib exit 1  # [win]
+
+    # Windows: Test headers
     - if not exist %LIBRARY_INC%\\whisper.h exit 1  # [win]
+    - if not exist %LIBRARY_INC%\\ggml.h exit 1  # [win]
+    - if not exist %LIBRARY_INC%\\gguf.h exit 1  # [win]
+
+    # Windows: Test pkg-config
+    - if not exist %LIBRARY_LIB%\\pkgconfig\\whisper.pc exit 1  # [win]
 
 about:
   home: https://github.com/ggml-org/whisper.cpp
