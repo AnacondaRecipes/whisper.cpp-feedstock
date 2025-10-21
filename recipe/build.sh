@@ -5,8 +5,6 @@ set -euxo pipefail
 # and thus get it forwarded to the build
 if [[ "$OSTYPE" == "darwin"* ]]; then
     echo ${OSX_SDK_DIR:-}
-    # Fix for macOS libc++ availability issues
-    export CXXFLAGS="${CXXFLAGS} -D_LIBCPP_DISABLE_AVAILABILITY"
 fi
 
 # Determine GPU acceleration settings based on variant
