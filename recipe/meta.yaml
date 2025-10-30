@@ -1,0 +1,143 @@
+{% set name = "whisper.cpp" %}
+{% set version = "1.8.2" %}
+{% set build_number = 0 %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/ggml-org/{{ name }}/archive/v{{ version }}.tar.gz
+  sha256: bcee25589bb8052d9e155369f6759a05729a2022d2a8085c1aa4345108523077
+
+build:
+  number: {{ build_number }}
+
+  # Skip invalid variant combinations
+  # Do not mix cublas (GPU BLAS) with non-CUDA builds, or vice versa
+  skip: true  # [((gpu_variant or "").startswith('cuda') and (blas_impl != "cublas")) or (not (gpu_variant or "").startswith('cuda') and (blas_impl == "cublas"))]
+
+  # GPU variants get higher build number for solver preference
+  number: {{ build_number + 100 }}  # [gpu_variant != "none"]
+  number: {{ build_number }}        # [gpu_variant == "none"]
+
+  # Build strings identify the variant
+  string: cuda{{ cuda_compiler_version | replace('.', '') }}_h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}  # [(gpu_variant or "").startswith('cuda')]
+  string: cpu_{{ blas_impl }}_h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}                                 # [gpu_variant == "none"]
+  string: mps_h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}                                                 # [gpu_variant == "metal"]
+
+  # Allow missing CUDA runtime libraries (provided by NVIDIA driver)
+  missing_dso_whitelist:                # [(gpu_variant or "").startswith('cuda')]
+    - "**/libcuda.so*"                  # [(gpu_variant or "").startswith('cuda') and linux]
+    - "**/nvcuda.dll"                   # [(gpu_variant or "").startswith('cuda') and win]
+
+  run_exports:
+    - {{ pin_subpackage('whisper.cpp', exact=True) }}
+
+requirements:
+  build:
+    - {{ stdlib('c') }}
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - {{ compiler('cuda') }}                              # [(gpu_variant or "").startswith('cuda')]
+    - cmake
+    - ninja-base
+    - git  # [not win] - Used by CMake git-vars module for version detection
+    - pkg-config
+
+  host:
+    # CUDA dependencies
+    - cuda-version     {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda')]
+    - cuda-cudart-dev  {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda')]
+    - libcublas-dev    {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda')]
+    - cuda-compat      {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda') and linux]
+
+    # CPU BLAS dependencies
+    - openblas-devel {{ openblas }}                       # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "openblas"]
+    - mkl-devel {{ mkl }}                                 # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
+    - intel-openmp {{ mkl }}                              # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
+
+    # OpenMP for all platforms
+    - llvm-openmp {{ cxx_compiler_version }}              # [osx]
+
+  run:
+    # CUDA runtime dependencies
+    - {{ pin_compatible('cuda-version', max_pin='x.x') }} # [(gpu_variant or "").startswith('cuda')]
+    - cuda-version     {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda')]
+    - __cuda                                              # [(gpu_variant or "").startswith('cuda')]
+
+    # CPU runtime dependencies
+    - {{ pin_compatible('intel-openmp') }}                # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
+    - llvm-openmp                                         # [osx] bounds through run_exports
+    - _openmp_mutex                                       # [linux]
+    - libgomp                                             # [linux and (not (gpu_variant or "").startswith('cuda'))]
+
+  run_constrained:
+    # Conflict with llama.cpp since both vendor ggml
+    - llama.cpp <0.0.0a0
+    - libllama <0.0.0a0
+
+test:
+  commands:
+    # Test command-line tools execute
+    - whisper-cli --help
+    - whisper-bench --help  # [not win]
+    - whisper-server --help  # [not win]
+
+    # Unix: Test binaries
+    - test -f $PREFIX/bin/vad-speech-segments  # [unix]
+    - test -f $PREFIX/bin/whisper-bench  # [unix]
+    - test -f $PREFIX/bin/whisper-cli  # [unix]
+    - test -f $PREFIX/bin/whisper-server  # [unix]
+
+    # Unix: Test libraries
+    - test -f $PREFIX/lib/libwhisper${SHLIB_EXT}  # [unix]
+    - test -f $PREFIX/lib/libggml${SHLIB_EXT}  # [unix]
+
+    # Unix: Test headers
+    - test -f $PREFIX/include/whisper.h  # [unix]
+    - test -f $PREFIX/include/ggml.h  # [unix]
+    - test -f $PREFIX/include/gguf.h  # [unix]
+
+    # Unix: Test pkg-config
+    - test -f $PREFIX/lib/pkgconfig/whisper.pc  # [unix]
+
+    # Windows: Test DLLs and executables
+    - if not exist %LIBRARY_BIN%\\ggml.dll exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\whisper.dll exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\vad-speech-segments.exe exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\whisper-bench.exe exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\whisper-cli.exe exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\whisper-server.exe exit 1  # [win]
+
+    # Windows: Test libraries
+    - if not exist %LIBRARY_LIB%\\ggml.lib exit 1  # [win]
+    - if not exist %LIBRARY_LIB%\\whisper.lib exit 1  # [win]
+
+    # Windows: Test headers
+    - if not exist %LIBRARY_INC%\\whisper.h exit 1  # [win]
+    - if not exist %LIBRARY_INC%\\ggml.h exit 1  # [win]
+    - if not exist %LIBRARY_INC%\\gguf.h exit 1  # [win]
+
+    # Windows: Test pkg-config
+    - if not exist %LIBRARY_LIB%\\pkgconfig\\whisper.pc exit 1  # [win]
+
+about:
+  home: https://github.com/ggml-org/whisper.cpp
+  dev_url: https://github.com/ggml-org/whisper.cpp
+  doc_url: https://github.com/ggml-org/whisper.cpp/blob/master/README.md
+  summary: Port of OpenAI's Whisper model in C/C++
+  description: |
+    whisper.cpp is a high-performance inference of OpenAI's Whisper automatic speech recognition (ASR)
+    model implemented in C/C++. It provides efficient speech-to-text transcription with support for
+    multiple languages and hardware acceleration options including Metal (Apple Silicon), CUDA (NVIDIA GPUs),
+    and optimized BLAS libraries (MKL, OpenBLAS, Accelerate).
+
+    This package is built with {{ blas_impl }} for BLAS operations and {{ gpu_variant }} for GPU acceleration.
+  license: MIT
+  license_file: LICENSE
+
+extra:
+  feedstock-name: whisper.cpp
+  recipe-maintainers:
+    - xkong-anaconda

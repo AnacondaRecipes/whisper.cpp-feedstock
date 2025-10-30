@@ -1,2 +1,35 @@
-MACOSX_SDK_VERSION:             # [osx and x86_64]
-  - 10.15                       # [osx and x86_64]
+# This feedstock builds whisper.cpp with different acceleration backends
+# Similar structure to llama.cpp-feedstock since both use GGML
+
+# Build different BLAS implementations for CPU acceleration
+blas_impl:
+  - mkl                        # [win or (linux and x86_64)]
+  - openblas                   # [linux]
+  - accelerate                 # [osx]
+  - cublas                     # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+
+# GPU acceleration variants
+gpu_variant:
+  - none
+  - metal                      # [osx]
+  - cuda-12                    # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+
+# whisper.cpp Metal support requires MTLBuffer.gpuAddress (macOS 13.0+)
+# Use SDK 14.5 like llama.cpp for all macOS builds
+# This allows building with latest SDK while supporting older runtime versions via deployment target
+OSX_SDK_VER:                   # [osx]
+  - 14.5                       # [osx]
+
+# CUDA compiler configuration
+cuda_compiler_version:         # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+  - none                       # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+  - 12.4                       # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+
+cuda_compiler:                 # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+- cuda-nvcc                    # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+
+# Zip gpu_variant with cuda_compiler_version to ensure they're built together
+zip_keys:                      # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+  -                            # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+    - gpu_variant              # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+    - cuda_compiler_version    # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
