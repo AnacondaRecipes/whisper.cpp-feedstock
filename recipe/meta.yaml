@@ -81,6 +81,7 @@ requirements:
   run_constrained:
     # Conflict with llama.cpp since both vendor ggml
     - llama.cpp <0.0.0a0
+    - libllama <0.0.0a0
 
 test:
   commands:
