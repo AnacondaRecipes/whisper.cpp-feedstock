@@ -58,9 +58,7 @@ requirements:
     - intel-openmp {{ mkl }}                              # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
 
     # OpenMP for all platforms
-    - llvm-openmp {{ cxx_compiler_version }}              # [osx]    
-    - libgomp 11.2 {{ cxx_compiler_version }}             # [linux and (not (gpu_variant or "").startswith('cuda'))] 
-    
+    - llvm-openmp {{ cxx_compiler_version }}              # [osx]
 
     # libcurl dependency
     - libcurl {{ libcurl }}
