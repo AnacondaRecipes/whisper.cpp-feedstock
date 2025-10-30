@@ -53,16 +53,17 @@ requirements:
     - cuda-compat      {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda') and linux]
 
     # CPU BLAS dependencies
-    - openblas-devel                                      # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "openblas"]
-    - mkl-devel                                           # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
-    - intel-openmp                                        # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
+    - openblas-devel {{ openblas }}                       # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "openblas"]
+    - mkl-devel {{ mkl }}                                 # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
+    - intel-openmp {{ mkl }}                              # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
 
     # OpenMP for all platforms
-    - llvm-openmp                                         # [osx]
-    - libgomp                                             # [linux and (not (gpu_variant or "").startswith('cuda'))]
+    - llvm-openmp {{ cxx_compiler_version }}              # [osx]    
+    - libgomp 11.2 {{ cxx_compiler_version }}             # [linux and (not (gpu_variant or "").startswith('cuda'))] 
+    
 
     # libcurl dependency
-    - libcurl
+    - libcurl {{ libcurl }}
 
   run:
     # CUDA runtime dependencies
