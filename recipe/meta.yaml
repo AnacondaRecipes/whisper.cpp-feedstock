@@ -60,9 +60,6 @@ requirements:
     # OpenMP for all platforms
     - llvm-openmp {{ cxx_compiler_version }}              # [osx]
 
-    # libcurl dependency
-    - libcurl {{ libcurl }}
-
   run:
     # CUDA runtime dependencies
     - {{ pin_compatible('cuda-version', max_pin='x.x') }} # [(gpu_variant or "").startswith('cuda')]
@@ -74,9 +71,6 @@ requirements:
     - llvm-openmp                                         # [osx] bounds through run_exports
     - _openmp_mutex                                       # [linux]
     - libgomp                                             # [linux and (not (gpu_variant or "").startswith('cuda'))]
-
-    # libcurl runtime
-    - libcurl  # bounds through run_exports
 
   run_constrained:
     # Conflict with llama.cpp since both vendor ggml
