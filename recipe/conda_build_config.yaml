@@ -21,14 +21,14 @@ gpu_variant:
 OSX_SDK_VER:                   # [osx]
   - 14.5                       # [osx]
 
-# CUDA compiler configuration — covers PKG-13074 epic ask of 12.9 + 13.1
+# CUDA compiler version — values match aggregate CBC pin (12.9 + 13.0); we
+# redefine here only to add the `none` entry for the non-CUDA variant so
+# zip_keys can align it with gpu_variant. `cuda_compiler: cuda-nvcc` comes
+# from the aggregate CBC.
 cuda_compiler_version:         # [win or linux]
   - none                       # [win or linux]
   - 12.9                       # [win or linux]
-  - 13.1                       # [win or linux]
-
-cuda_compiler:                 # [win or linux]
-  - cuda-nvcc                  # [win or linux]
+  - 13.0                       # [win or linux]
 
 # Zip gpu_variant with cuda_compiler_version to ensure they're built together
 zip_keys:                      # [win or linux]
