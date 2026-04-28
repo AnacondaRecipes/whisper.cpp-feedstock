@@ -85,7 +85,8 @@ test:
     - whisper-server --help  # [not win]
 
     # Unix: Test binaries
-    - test -f $PREFIX/bin/vad-speech-segments  # [unix]
+    # Note: upstream renamed `vad-speech-segments` → `whisper-vad-speech-segments` in 1.8.4
+    - test -f $PREFIX/bin/whisper-vad-speech-segments  # [unix]
     - test -f $PREFIX/bin/whisper-bench  # [unix]
     - test -f $PREFIX/bin/whisper-cli  # [unix]
     - test -f $PREFIX/bin/whisper-server  # [unix]
@@ -105,7 +106,7 @@ test:
     # Windows: Test DLLs and executables
     - if not exist %LIBRARY_BIN%\\ggml.dll exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\whisper.dll exit 1  # [win]
-    - if not exist %LIBRARY_BIN%\\vad-speech-segments.exe exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\whisper-vad-speech-segments.exe exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\whisper-bench.exe exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\whisper-cli.exe exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\whisper-server.exe exit 1  # [win]
