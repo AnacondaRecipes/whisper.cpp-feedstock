@@ -9,12 +9,13 @@ set WHISPER_BLAS=OFF
 set WHISPER_OPENBLAS=OFF
 set WHISPER_CUBLAS=OFF
 
-:: Handle CUDA variant
-if "%gpu_variant%"=="cuda-12" (
+:: Handle CUDA variant (covers cuda-12 and cuda-13)
+echo %gpu_variant% | findstr /B "cuda-" >nul
+if !errorlevel! == 0 (
     set WHISPER_CUDA=ON
     set WHISPER_CUBLAS=ON
     set WHISPER_BLAS=ON
-    echo Building with CUDA support ^(cuBLAS^)
+    echo Building with CUDA support ^(cuBLAS^), CUDA %cuda_compiler_version%
 )
 
 :: Handle CPU BLAS variants (matching llama.cpp-feedstock approach)

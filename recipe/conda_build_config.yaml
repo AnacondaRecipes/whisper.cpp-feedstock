@@ -6,13 +6,14 @@ blas_impl:
   - mkl                        # [win or (linux and x86_64)]
   - openblas                   # [linux]
   - accelerate                 # [osx]
-  - cublas                     # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+  - cublas                     # [win or linux]
 
 # GPU acceleration variants
 gpu_variant:
   - none
   - metal                      # [osx]
-  - cuda-12                    # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+  - cuda-12                    # [win or linux]
+  - cuda-13                    # [win or linux]
 
 # whisper.cpp Metal support requires MTLBuffer.gpuAddress (macOS 13.0+)
 # Use SDK 14.5 like llama.cpp for all macOS builds
@@ -20,16 +21,17 @@ gpu_variant:
 OSX_SDK_VER:                   # [osx]
   - 14.5                       # [osx]
 
-# CUDA compiler configuration
-cuda_compiler_version:         # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
-  - none                       # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
-  - 12.4                       # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+# CUDA compiler configuration — covers PKG-13074 epic ask of 12.9 + 13.1
+cuda_compiler_version:         # [win or linux]
+  - none                       # [win or linux]
+  - 12.9                       # [win or linux]
+  - 13.1                       # [win or linux]
 
-cuda_compiler:                 # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
-- cuda-nvcc                    # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+cuda_compiler:                 # [win or linux]
+  - cuda-nvcc                  # [win or linux]
 
 # Zip gpu_variant with cuda_compiler_version to ensure they're built together
-zip_keys:                      # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
-  -                            # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
-    - gpu_variant              # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
-    - cuda_compiler_version    # [ANACONDA_ROCKET_ENABLE_CUDA and (win or (linux and x86_64))]
+zip_keys:                      # [win or linux]
+  -                            # [win or linux]
+    - gpu_variant              # [win or linux]
+    - cuda_compiler_version    # [win or linux]

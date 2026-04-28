@@ -1,5 +1,5 @@
 {% set name = "whisper.cpp" %}
-{% set version = "1.8.2" %}
+{% set version = "1.8.4" %}
 {% set build_number = 0 %}
 
 package:
@@ -8,7 +8,7 @@ package:
 
 source:
   url: https://github.com/ggml-org/{{ name }}/archive/v{{ version }}.tar.gz
-  sha256: bcee25589bb8052d9e155369f6759a05729a2022d2a8085c1aa4345108523077
+  sha256: b26f30e52c095ccb75da40b168437736605eb280de57381887bf9e2b65f31e66
 
 build:
   number: {{ build_number }}
@@ -49,7 +49,7 @@ requirements:
     # CUDA dependencies
     - cuda-version     {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda')]
     - cuda-cudart-dev  {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda')]
-    - libcublas-dev    {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda')]
+    - libcublas-dev                                       # [(gpu_variant or "").startswith('cuda')]
     - cuda-compat      {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda') and linux]
 
     # CPU BLAS dependencies
