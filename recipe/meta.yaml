@@ -50,7 +50,6 @@ requirements:
     - cuda-version     {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda')]
     - cuda-cudart-dev  {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda')]
     - libcublas-dev                                       # [(gpu_variant or "").startswith('cuda')]
-    - cuda-compat      {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda') and linux]
 
     # CPU BLAS dependencies
     - openblas-devel {{ openblas }}                       # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "openblas"]
