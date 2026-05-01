@@ -1,0 +1,5 @@
+# Whisper.cpp builds the ggml CUDA backend with many sm_* architectures
+# (sm_50–sm_121) which makes the win-64 CUDA build slow. The default
+# 2-hour task timeout is insufficient — observed timeout at step 163/178.
+# Match llama.cpp-feedstock's setting for consistency.
+task_timeout: 25200  # 7 hours

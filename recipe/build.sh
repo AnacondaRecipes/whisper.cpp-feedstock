@@ -15,12 +15,12 @@ WHISPER_BLAS=OFF
 WHISPER_OPENBLAS=OFF
 WHISPER_CUBLAS=OFF
 
-# Handle CUDA variant
-if [[ "${gpu_variant:-none}" == "cuda-12" ]]; then
+# Handle CUDA variant (covers cuda-12 and cuda-13)
+if [[ "${gpu_variant:-none}" == cuda-* ]]; then
     WHISPER_CUDA=ON
     WHISPER_CUBLAS=ON
     WHISPER_BLAS=ON
-    echo "Building with CUDA support (cuBLAS)"
+    echo "Building with CUDA support (cuBLAS), CUDA ${cuda_compiler_version}"
 fi
 
 # Handle Metal variant (matching llama.cpp approach)
