@@ -6,8 +6,10 @@ setlocal enabledelayedexpansion
 set WHISPER_CUDA=OFF
 set WHISPER_METAL=OFF
 set WHISPER_BLAS=OFF
+set WHISPER_OPENMP=ON
 set WHISPER_OPENBLAS=OFF
 set WHISPER_CUBLAS=OFF
+set WHISPER_OPENMP_FLAGS=
 
 :: Handle CUDA variant (covers cuda-12 and cuda-13)
 echo %gpu_variant% | findstr /B "cuda-" >nul
@@ -24,6 +26,7 @@ if "%blas_impl%"=="mkl" (
     set WHISPER_ACCELERATE=OFF
     set WHISPER_OPENBLAS=OFF
     set WHISPER_BLAS_VENDOR=Intel10_64_dyn
+    set WHISPER_OPENMP_FLAGS=-DOpenMP_C_FLAGS=/openmp:llvm -DOpenMP_CXX_FLAGS=/openmp:llvm -DOpenMP_C_LIB_NAMES=libiomp5md -DOpenMP_CXX_LIB_NAMES=libiomp5md -DOpenMP_libiomp5md_LIBRARY=%LIBRARY_LIB%\libiomp5md.lib
     echo Building with MKL support ^(via BLAS^)
 ) else if "%blas_impl%"=="openblas" (
     set WHISPER_BLAS=ON
@@ -48,6 +51,7 @@ set CMAKE_FLAGS=-S . -B build -GNinja ^
     -DGGML_CUDA=%WHISPER_CUDA% ^
     -DGGML_METAL=%WHISPER_METAL% ^
     -DGGML_BLAS=%WHISPER_BLAS% ^
+    -DGGML_OPENMP=%WHISPER_OPENMP% ^
     -DGGML_ACCELERATE=%WHISPER_ACCELERATE% ^
     -DGGML_OPENBLAS=%WHISPER_OPENBLAS% ^
     -DGGML_CUBLAS=%WHISPER_CUBLAS% ^
@@ -59,6 +63,10 @@ set CMAKE_FLAGS=-S . -B build -GNinja ^
 :: Add BLAS vendor if specified
 if defined WHISPER_BLAS_VENDOR (
     set CMAKE_FLAGS=%CMAKE_FLAGS% -DGGML_BLAS_VENDOR=%WHISPER_BLAS_VENDOR%
+)
+
+if defined WHISPER_OPENMP_FLAGS (
+    set CMAKE_FLAGS=%CMAKE_FLAGS% %WHISPER_OPENMP_FLAGS%
 )
 
 cmake %CMAKE_FLAGS%
