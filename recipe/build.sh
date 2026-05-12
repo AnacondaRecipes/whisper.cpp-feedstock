@@ -104,7 +104,9 @@ if [[ -n "${WHISPER_BLAS_VENDOR}" ]]; then
     CMAKE_FLAGS+=(-DGGML_BLAS_VENDOR=${WHISPER_BLAS_VENDOR})
 fi
 
-CMAKE_FLAGS+=("${WHISPER_OPENMP_FLAGS[@]}")
+if [[ ${#WHISPER_OPENMP_FLAGS[@]} -gt 0 ]]; then
+    CMAKE_FLAGS+=("${WHISPER_OPENMP_FLAGS[@]}")
+fi
 
 cmake "${CMAKE_FLAGS[@]}"
 

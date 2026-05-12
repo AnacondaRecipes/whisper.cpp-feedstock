@@ -78,6 +78,8 @@ requirements:
     - libllama <0.0.0a0
 
 test:
+  requires:
+    - c-compiler
   files:
     - test-openmp.bat  # [win and blas_impl == "mkl"]
     - test-openmp.sh  # [linux and blas_impl == "mkl"]
