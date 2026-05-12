@@ -70,7 +70,7 @@ requirements:
     # CPU runtime dependencies
     - {{ pin_compatible('intel-openmp') }}                # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
     - llvm-openmp                                         # [osx] bounds through run_exports
-    - libgomp                                             # [linux and (not (gpu_variant or "").startswith('cuda'))]
+    - libgomp                                             # [linux and blas_impl == "openblas"]
 
   run_constrained:
     # Conflict with llama.cpp since both vendor ggml
@@ -79,7 +79,8 @@ requirements:
 
 test:
   files:
-    - test-openmp.bat  # [win]
+    - test-openmp.bat  # [win and blas_impl == "mkl"]
+    - test-openmp.sh  # [linux and blas_impl == "mkl"]
   commands:
     # Test command-line tools execute
     - whisper-cli --help
@@ -127,6 +128,8 @@ test:
 
     # Windows MKL builds should use Intel OpenMP, not MSVC OpenMP.
     - test-openmp.bat  # [win and blas_impl == "mkl"]
+    # Linux MKL builds should use Intel OpenMP, not GNU OpenMP.
+    - bash test-openmp.sh  # [linux and blas_impl == "mkl"]
 
 about:
   home: https://github.com/ggml-org/whisper.cpp

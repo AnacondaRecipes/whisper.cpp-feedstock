@@ -12,8 +12,10 @@ fi
 WHISPER_CUDA=OFF
 WHISPER_METAL=OFF
 WHISPER_BLAS=OFF
+WHISPER_OPENMP=ON
 WHISPER_OPENBLAS=OFF
 WHISPER_CUBLAS=OFF
+WHISPER_OPENMP_FLAGS=()
 
 # Handle CUDA variant (covers cuda-12 and cuda-13)
 if [[ "${gpu_variant:-none}" == cuda-* ]]; then
@@ -53,6 +55,15 @@ elif [[ "${blas_impl:-}" == "mkl" ]]; then
     WHISPER_ACCELERATE=OFF
     WHISPER_OPENBLAS=OFF
     WHISPER_BLAS_VENDOR="Intel10_64_dyn"
+    if [[ "${target_platform:-}" == linux-* ]]; then
+        WHISPER_OPENMP_FLAGS=(
+            -DOpenMP_C_FLAGS=-fopenmp
+            -DOpenMP_CXX_FLAGS=-fopenmp
+            -DOpenMP_C_LIB_NAMES=iomp5
+            -DOpenMP_CXX_LIB_NAMES=iomp5
+            -DOpenMP_iomp5_LIBRARY=${PREFIX}/lib/libiomp5${SHLIB_EXT}
+        )
+    fi
     echo "Building with MKL support (via BLAS)"
 elif [[ "${blas_impl:-}" == "openblas" ]]; then
     WHISPER_BLAS=ON
@@ -78,6 +89,7 @@ CMAKE_FLAGS=(
     -DGGML_CUDA=${WHISPER_CUDA}
     -DGGML_METAL=${WHISPER_METAL}
     -DGGML_BLAS=${WHISPER_BLAS}
+    -DGGML_OPENMP=${WHISPER_OPENMP}
     -DGGML_ACCELERATE=${WHISPER_ACCELERATE}
     -DGGML_OPENBLAS=${WHISPER_OPENBLAS}
     -DGGML_CUBLAS=${WHISPER_CUBLAS}
@@ -91,6 +103,8 @@ CMAKE_FLAGS=(
 if [[ -n "${WHISPER_BLAS_VENDOR}" ]]; then
     CMAKE_FLAGS+=(-DGGML_BLAS_VENDOR=${WHISPER_BLAS_VENDOR})
 fi
+
+CMAKE_FLAGS+=("${WHISPER_OPENMP_FLAGS[@]}")
 
 cmake "${CMAKE_FLAGS[@]}"
 
