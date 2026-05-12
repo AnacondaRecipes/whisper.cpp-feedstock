@@ -58,7 +58,7 @@ requirements:
     # OpenMP for all platforms
     - intel-openmp {{ mkl }}                              # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
     - llvm-openmp {{ cxx_compiler_version }}              # [osx]
-    - libgomp                                             # [linux and blas_impl == "openblas"]
+    - libgomp                                             # [linux and (blas_impl == "openblas" or (gpu_variant or "").startswith('cuda'))]
     - vcomp14                                             # [(win and x86_64) and not (blas_impl == "mkl")]
 
   run:
@@ -70,7 +70,7 @@ requirements:
     # CPU runtime dependencies
     - {{ pin_compatible('intel-openmp') }}                # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
     - llvm-openmp                                         # [osx] bounds through run_exports
-    - libgomp                                             # [linux and blas_impl == "openblas"]
+    - libgomp                                             # [linux and (blas_impl == "openblas" or (gpu_variant or "").startswith('cuda'))]
 
   run_constrained:
     # Conflict with llama.cpp since both vendor ggml
