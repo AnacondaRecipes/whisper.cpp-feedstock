@@ -3,6 +3,3 @@
 # 2-hour task timeout is insufficient — observed timeout at step 163/178.
 # Match llama.cpp-feedstock's setting for consistency.
 max_run_time: 25200  # 7 hours
-
-channels:
-  - build
