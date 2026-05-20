@@ -2,4 +2,4 @@
 # (sm_50–sm_121) which makes the win-64 CUDA build slow. The default
 # 2-hour task timeout is insufficient — observed timeout at step 163/178.
 # Match llama.cpp-feedstock's setting for consistency.
-task_timeout: 25200  # 7 hours
+max_run_time: 25200  # 7 hours
