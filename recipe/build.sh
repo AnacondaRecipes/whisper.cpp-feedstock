@@ -97,6 +97,8 @@ CMAKE_FLAGS=(
     -DWHISPER_BUILD_EXAMPLES=ON
     -DWHISPER_BUILD_TESTS=OFF
     -DWHISPER_BUILD_SERVER=ON
+    # upstream defaults to ON, which stamps "<version>-dev" into whisper_version() and the .pc files
+    -DWHISPER_BUILD_IS_DEV=OFF
 )
 
 # Add BLAS vendor if specified
