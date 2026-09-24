@@ -7,78 +7,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     echo $OSX_SDK_DIR
 fi
 
-# Determine GPU acceleration settings based on variant
-# Default: no GPU acceleration
-WHISPER_CUDA=OFF
-WHISPER_METAL=OFF
-WHISPER_BLAS=OFF
-WHISPER_OPENMP=ON
-WHISPER_OPENBLAS=OFF
-WHISPER_CUBLAS=OFF
-WHISPER_OPENMP_FLAGS=()
-
-# Handle CUDA variant (covers cuda-12 and cuda-13)
-if [[ "${gpu_variant:-none}" == cuda-* ]]; then
-    WHISPER_CUDA=ON
-    WHISPER_CUBLAS=ON
-    WHISPER_BLAS=ON
-    echo "Building with CUDA support (cuBLAS), CUDA ${cuda_compiler_version}"
-fi
-
-# Handle Metal variant (matching llama.cpp approach)
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    if [[ "${gpu_variant:-none}" == "none" ]]; then
-        # Explicitly disable Metal for none variant to prevent auto-detection
-        # Metal requires macOS 13.0+ for gpuAddress property
-        WHISPER_METAL=OFF
-        echo "Building CPU-only variant (Metal disabled)"
-    elif [[ "${gpu_variant:-none}" == "metal" ]]; then
-        if [[ "${target_platform}" == "osx-arm64" ]]; then
-            WHISPER_METAL=ON
-            echo "Building with Metal support for Apple Silicon"
-        else
-            echo "Metal variant requested but not on osx-arm64, disabling Metal"
-            WHISPER_METAL=OFF
-        fi
-    fi
-fi
-
-# Handle CPU BLAS variants (matching llama.cpp-feedstock approach)
-if [[ "${blas_impl:-}" == "accelerate" ]]; then
-    WHISPER_BLAS=ON
-    WHISPER_ACCELERATE=ON
-    WHISPER_OPENBLAS=OFF
-    WHISPER_BLAS_VENDOR="Apple"
-    echo "Building with Accelerate framework (macOS)"
-elif [[ "${blas_impl:-}" == "mkl" ]]; then
-    WHISPER_BLAS=ON
-    WHISPER_ACCELERATE=OFF
-    WHISPER_OPENBLAS=OFF
-    WHISPER_BLAS_VENDOR="Intel10_64_dyn"
-    if [[ "${target_platform:-}" == linux-* ]]; then
-        WHISPER_OPENMP_FLAGS=(
-            -DOpenMP_C_FLAGS=-fopenmp
-            -DOpenMP_CXX_FLAGS=-fopenmp
-            -DOpenMP_C_LIB_NAMES=iomp5
-            -DOpenMP_CXX_LIB_NAMES=iomp5
-            -DOpenMP_iomp5_LIBRARY=${PREFIX}/lib/libiomp5${SHLIB_EXT}
-        )
-    fi
-    echo "Building with MKL support (via BLAS)"
-elif [[ "${blas_impl:-}" == "openblas" ]]; then
-    WHISPER_BLAS=ON
-    WHISPER_ACCELERATE=OFF
-    WHISPER_OPENBLAS=ON
-    WHISPER_BLAS_VENDOR="OpenBLAS"
-    echo "Building with OpenBLAS support"
-else
-    WHISPER_BLAS=OFF
-    WHISPER_ACCELERATE=OFF
-    WHISPER_OPENBLAS=OFF
-    WHISPER_BLAS_VENDOR=""
-fi
-
-# Configure with CMake
+# ggml and its BLAS / OpenMP / CUDA / Metal backends come from libllama
+# (WHISPER_USE_SYSTEM_GGML), so no GGML_* options are set here.
 CMAKE_FLAGS=(
     -S . -B build -GNinja
     ${CMAKE_ARGS}
@@ -86,29 +16,13 @@ CMAKE_FLAGS=(
     -DCMAKE_PREFIX_PATH=${PREFIX}
     -DCMAKE_BUILD_TYPE=Release
     -DBUILD_SHARED_LIBS=ON
-    -DGGML_CUDA=${WHISPER_CUDA}
-    -DGGML_METAL=${WHISPER_METAL}
-    -DGGML_BLAS=${WHISPER_BLAS}
-    -DGGML_OPENMP=${WHISPER_OPENMP}
-    -DGGML_ACCELERATE=${WHISPER_ACCELERATE}
-    -DGGML_OPENBLAS=${WHISPER_OPENBLAS}
-    -DGGML_CUBLAS=${WHISPER_CUBLAS}
-    -DWHISPER_CURL=ON
+    -DWHISPER_USE_SYSTEM_GGML=ON
     -DWHISPER_BUILD_EXAMPLES=ON
     -DWHISPER_BUILD_TESTS=OFF
     -DWHISPER_BUILD_SERVER=ON
     # upstream defaults to ON, which stamps "<version>-dev" into whisper_version() and the .pc files
     -DWHISPER_BUILD_IS_DEV=OFF
 )
-
-# Add BLAS vendor if specified
-if [[ -n "${WHISPER_BLAS_VENDOR}" ]]; then
-    CMAKE_FLAGS+=(-DGGML_BLAS_VENDOR=${WHISPER_BLAS_VENDOR})
-fi
-
-if [[ ${#WHISPER_OPENMP_FLAGS[@]} -gt 0 ]]; then
-    CMAKE_FLAGS+=("${WHISPER_OPENMP_FLAGS[@]}")
-fi
 
 cmake "${CMAKE_FLAGS[@]}"
 
