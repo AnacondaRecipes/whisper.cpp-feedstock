@@ -12,27 +12,13 @@ source:
   sha256: 57e280cee375ab02425b806ad5146b99f6eb9357e3c2b31357c8a6af2e2e44ae
 
 build:
-  # Skip invalid variant combinations
-  # Do not mix cublas (GPU BLAS) with non-CUDA builds, or vice versa
-  skip: true  # [((gpu_variant or "").startswith('cuda') and (blas_impl != "cublas")) or (not (gpu_variant or "").startswith('cuda') and (blas_impl == "cublas"))]
-
-  # GPU variants get higher build number for solver preference
-  number: {{ build_number + 100 }}  # [gpu_variant != "none"]
-  number: {{ build_number }}        # [gpu_variant == "none"]
-
-  # Build strings identify the variant (and match libllama's, which provides ggml)
-  string: cuda{{ cuda_compiler_version | replace('.', '') }}_h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}  # [(gpu_variant or "").startswith('cuda')]
-  string: cpu_{{ blas_impl }}_h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}                                 # [gpu_variant == "none"]
-  string: mps_h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}                                                 # [gpu_variant == "metal"]
-
-  # conda-build <=26.7.1 exports a placeholder h1234567 hash for exact self-pins
-  # with a custom build string (conda/conda-build#6100), so pin version + variant.
+  number: {{ build_number }}
+  # One build serves every backend: ggml's CPU/BLAS/CUDA/Metal backends are
+  # plugins loaded from whichever libllama variant is installed at runtime.
   run_exports:
-    - {{ name }} {{ version }} cuda{{ cuda_compiler_version | replace('.', '') }}_*  # [(gpu_variant or "").startswith('cuda')]
-    - {{ name }} {{ version }} cpu_{{ blas_impl }}_*                                 # [gpu_variant == "none"]
-    - {{ name }} {{ version }} mps_*                                                 # [gpu_variant == "metal"]
-
-  # libllama's own run_export carries the same placeholder hash; pinned exactly in run instead.
+    - {{ pin_subpackage(name, max_pin='x.x.x') }}
+  # libllama's run_export pins its exact build (with a placeholder h1234567 hash,
+  # conda/conda-build#6100); run below accepts any variant of the same version.
   ignore_run_exports_from:
     - libllama
 
@@ -41,25 +27,19 @@ requirements:
     - {{ stdlib('c') }}
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
-    # No CUDA code is compiled here; keeps CUDA variants on GPU workers, whose
-    # test envs need __cuda for libllama's CUDA build.
-    - {{ compiler('cuda') }}                              # [(gpu_variant or "").startswith('cuda')]
     - cmake
     - ninja-base
     - git  # [not win] - Used by CMake git-vars module for version detection
     - pkg-config
 
   host:
-    # ggml (with its BLAS / OpenMP / CUDA / Metal backends) comes from libllama
-    # instead of whisper.cpp's vendored copy; the variant must match.
-    - cuda-version {{ cuda_compiler_version }}            # [(gpu_variant or "").startswith('cuda')]
-    - libllama {{ llama_cpp_version }} cuda{{ cuda_compiler_version | replace('.', '') }}_*  # [(gpu_variant or "").startswith('cuda')]
-    - libllama {{ llama_cpp_version }} cpu_{{ blas_impl }}_*                                 # [gpu_variant == "none"]
-    - libllama {{ llama_cpp_version }} mps_*                                                 # [gpu_variant == "metal"]
+    # ggml comes from libllama instead of whisper.cpp's vendored copy. Its libggml /
+    # libggml-base exports are identical across variants, so build against a CPU one.
+    - libllama {{ llama_cpp_version }} cpu_*
 
   run:
-    # ggml has no stable ABI: require the exact libllama build we compiled against
-    - {{ pin_compatible('libllama', exact=True) }}
+    # ggml has no stable ABI across releases: stay on the libllama version built against
+    - {{ pin_compatible('libllama', max_pin='x.x.x') }}
 
 test:
   requires:
@@ -125,7 +105,7 @@ about:
     multiple languages and hardware acceleration options including Metal (Apple Silicon), CUDA (NVIDIA GPUs),
     and optimized BLAS libraries (MKL, OpenBLAS, Accelerate).
 
-    This package is built with {{ blas_impl }} for BLAS operations and {{ gpu_variant }} for GPU acceleration.
+    Hardware acceleration is provided by the installed libllama variant, which ships the shared ggml library.
   license: MIT
   license_family: MIT
   license_file: LICENSE

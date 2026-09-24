@@ -1,7 +1,7 @@
-# This feedstock builds whisper.cpp with different acceleration backends
-# Similar structure to llama.cpp-feedstock since both use GGML
+# ggml (and its CPU/BLAS/CUDA/Metal backends) comes from libllama, so this
+# feedstock has no BLAS / GPU variant matrix of its own.
 
-# win-arm64 uses clang, matching libllama there (ggml rejects MSVC for ARM).
+# win-arm64 uses clang, as upstream's cmake/arm64-windows-llvm.cmake and libllama do.
 # 20.1.8 matches the clang/llvm-openmp generation libllama was built with.
 c_compiler:                    # [win and arm64]
   - clang                      # [win and arm64]
@@ -11,38 +11,3 @@ c_compiler_version:            # [win and arm64]
   - 20.1.8                     # [win and arm64]
 cxx_compiler_version:          # [win and arm64]
   - 20.1.8                     # [win and arm64]
-
-# Build different BLAS implementations for CPU acceleration
-blas_impl:
-  - mkl                        # [(win and x86_64) or (linux and x86_64)]
-  - openblas                   # [linux or win]
-  - accelerate                 # [osx]
-  - cublas                     # [win or linux]
-
-# GPU acceleration variants
-gpu_variant:
-  - none
-  - metal                      # [osx]
-  # NVIDIA's win-arm64 CUDA toolkit starts at 13.4: no cuda-12 there.
-  - cuda-12                    # [(win and x86_64) or linux]
-  - cuda-13                    # [win or linux]
-
-# Same SDK as libllama, whose ggml Metal backend needs macOS 13.0+/14.0+ APIs
-OSX_SDK_VER:                   # [osx]
-  - 14.5                       # [osx]
-
-# CUDA compiler version — values match aggregate CBC pin (12.9 + 13.0) and
-# libllama's 13.4 on win-arm64; we redefine here only to add the `none` entry for the non-CUDA variant so
-# zip_keys can align it with gpu_variant. `cuda_compiler: cuda-nvcc` comes
-# from the aggregate CBC.
-cuda_compiler_version:         # [win or linux]
-  - none                       # [win or linux]
-  - 12.9                       # [(win and x86_64) or linux]
-  - 13.0                       # [(win and x86_64) or linux]
-  - 13.4                       # [win and arm64]
-
-# Zip gpu_variant with cuda_compiler_version to ensure they're built together
-zip_keys:                      # [win or linux]
-  -                            # [win or linux]
-    - gpu_variant              # [win or linux]
-    - cuda_compiler_version    # [win or linux]
