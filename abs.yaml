@@ -1,5 +1,5 @@
 # TEMPORARY — remove before merge. libllama 0.5.0 with the backend-loading fix
 # (AnacondaRecipes/llama.cpp-feedstock#54) is not released yet; build and test
-# against that PR's graph channel.
+# against that PR's staging channel (head 6d4b554).
 channels:
-  - https://package-build.anaconda.com/pkg-orchestrator/v1/channels/graphs/20dc5dad-f8d1-408f-bf18-f8b2cd04e6f1
+  - https://staging.continuum.io/pbp/fs/llama.cpp-feedstock/pr54/6d4b554
