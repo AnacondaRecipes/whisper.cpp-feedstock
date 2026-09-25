@@ -1,93 +1,72 @@
 {% set name = "whisper.cpp" %}
-{% set version = "1.8.4" %}
-{% set build_number = 1 %}
+{% set version = "1.9.4" %}
+{% set build_number = 0 %}
+{% set llama_cpp_version = "0.5.0" %}
 
 package:
-  name: {{ name|lower }}
+  name: {{ name }}
   version: {{ version }}
 
 source:
   url: https://github.com/ggml-org/{{ name }}/archive/v{{ version }}.tar.gz
-  sha256: b26f30e52c095ccb75da40b168437736605eb280de57381887bf9e2b65f31e66
+  sha256: 57e280cee375ab02425b806ad5146b99f6eb9357e3c2b31357c8a6af2e2e44ae
+  patches:
+    # Library callers get no backends from a GGML_BACKEND_DL ggml unless they are loaded
+    - patches/0001-load-dynamic-ggml-backends-on-init.patch
 
 build:
   number: {{ build_number }}
-
-  # Skip invalid variant combinations
-  # Do not mix cublas (GPU BLAS) with non-CUDA builds, or vice versa
-  skip: true  # [((gpu_variant or "").startswith('cuda') and (blas_impl != "cublas")) or (not (gpu_variant or "").startswith('cuda') and (blas_impl == "cublas"))]
-
-  # GPU variants get higher build number for solver preference
-  number: {{ build_number + 100 }}  # [gpu_variant != "none"]
-  number: {{ build_number }}        # [gpu_variant == "none"]
-
-  # Build strings identify the variant
-  string: cuda{{ cuda_compiler_version | replace('.', '') }}_h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}  # [(gpu_variant or "").startswith('cuda')]
-  string: cpu_{{ blas_impl }}_h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}                                 # [gpu_variant == "none"]
-  string: mps_h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}                                                 # [gpu_variant == "metal"]
-
-  # Allow missing CUDA runtime libraries (provided by NVIDIA driver)
-  missing_dso_whitelist:                # [(gpu_variant or "").startswith('cuda')]
-    - "**/libcuda.so*"                  # [(gpu_variant or "").startswith('cuda') and linux]
-    - "**/nvcuda.dll"                   # [(gpu_variant or "").startswith('cuda') and win]
-
+  # One build serves every backend: ggml's CPU/BLAS/CUDA/Metal backends are
+  # plugins loaded from whichever libllama variant is installed at runtime.
   run_exports:
-    - {{ pin_subpackage('whisper.cpp', exact=True) }}
+    - {{ pin_subpackage(name, max_pin='x.x.x') }}
+  # libllama's run_export pins its exact build (with a placeholder h1234567 hash,
+  # conda/conda-build#6100); run below accepts any variant of the same version.
+  ignore_run_exports_from:
+    - libllama
 
 requirements:
   build:
     - {{ stdlib('c') }}
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
-    - {{ compiler('cuda') }}                              # [(gpu_variant or "").startswith('cuda')]
     - cmake
     - ninja-base
     - git  # [not win] - Used by CMake git-vars module for version detection
     - pkg-config
 
   host:
-    # CUDA dependencies
-    - cuda-version     {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda')]
-    - cuda-cudart-dev  {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda')]
-    - libcublas-dev                                       # [(gpu_variant or "").startswith('cuda')]
-
-    # CPU BLAS dependencies
-    - openblas-devel {{ openblas }}                       # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "openblas"]
-    - mkl-devel {{ mkl }}                                 # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
-
-    # OpenMP for all platforms
-    - intel-openmp {{ mkl }}                              # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
-    - llvm-openmp {{ cxx_compiler_version }}              # [osx]
-    - libgomp                                             # [linux and (blas_impl == "openblas" or (gpu_variant or "").startswith('cuda'))]
-    - vcomp14                                             # [(win and x86_64) and not (blas_impl == "mkl")]
+    # ggml comes from libllama instead of whisper.cpp's vendored copy. Its libggml /
+    # libggml-base exports are identical across variants, so build against a CPU one.
+    - libllama {{ llama_cpp_version }} cpu_*
 
   run:
-    # CUDA runtime dependencies
-    - {{ pin_compatible('cuda-version', max_pin='x.x') }} # [(gpu_variant or "").startswith('cuda')]
-    - cuda-version     {{ cuda_compiler_version }}        # [(gpu_variant or "").startswith('cuda')]
-    - __cuda                                              # [(gpu_variant or "").startswith('cuda')]
-
-    # CPU runtime dependencies
-    - {{ pin_compatible('intel-openmp') }}                # [(not (gpu_variant or "").startswith('cuda')) and blas_impl == "mkl"]
-    - llvm-openmp                                         # [osx] bounds through run_exports
-    - libgomp                                             # [linux and (blas_impl == "openblas" or (gpu_variant or "").startswith('cuda'))]
-
-  run_constrained:
-    # Conflict with llama.cpp since both vendor ggml
-    - llama.cpp <0.0.0a0
-    - libllama <0.0.0a0
+    # ggml has no stable ABI across releases: stay on the libllama version built against
+    - {{ pin_compatible('libllama', max_pin='x.x.x') }}
 
 test:
   requires:
-    - c-compiler
+    - {{ compiler('c') }}
   files:
-    - test-openmp.bat  # [win and blas_impl == "mkl"]
-    - test-openmp.sh  # [linux and blas_impl == "mkl"]
+    - test-c-api.c
+  source_files:
+    - models/for-tests-ggml-tiny.en.bin
+    - models/for-tests-ggml-parakeet-tdt.bin
+    - models/for-tests-silero-v6.2.0-ggml.bin
   commands:
     # Test command-line tools execute
     - whisper-cli --help
     - whisper-bench --help  # [not win]
     - whisper-server --help  # [not win]
+    - parakeet-cli --help
+
+    # Documented C API model init (whisper, parakeet, VAD) from outside $PREFIX/bin,
+    # without the caller loading ggml backends
+    - $CC test-c-api.c -I$PREFIX/include -L$PREFIX/lib -lwhisper -lparakeet -Wl,-rpath,$PREFIX/lib -o test-c-api  # [unix]
+    - cl.exe /nologo test-c-api.c /I"%LIBRARY_INC%" /Fe:test-c-api.exe /link /LIBPATH:"%LIBRARY_LIB%" whisper.lib parakeet.lib  # [win and x86_64]
+    - clang.exe test-c-api.c -I"%LIBRARY_INC%" -L"%LIBRARY_LIB%" -lwhisper -lparakeet -o test-c-api.exe  # [win and arm64]
+    - ./test-c-api models/for-tests-ggml-tiny.en.bin models/for-tests-ggml-parakeet-tdt.bin models/for-tests-silero-v6.2.0-ggml.bin  # [unix]
+    - test-c-api.exe models\for-tests-ggml-tiny.en.bin models\for-tests-ggml-parakeet-tdt.bin models\for-tests-silero-v6.2.0-ggml.bin  # [win]
 
     # Unix: Test binaries
     # Note: upstream renamed `vad-speech-segments` → `whisper-vad-speech-segments` in 1.8.4
@@ -95,43 +74,42 @@ test:
     - test -f $PREFIX/bin/whisper-bench  # [unix]
     - test -f $PREFIX/bin/whisper-cli  # [unix]
     - test -f $PREFIX/bin/whisper-server  # [unix]
+    - test -f $PREFIX/bin/parakeet-cli  # [unix]
+    - test -f $PREFIX/bin/parakeet-quantize  # [unix]
 
     # Unix: Test libraries
     - test -f $PREFIX/lib/libwhisper${SHLIB_EXT}  # [unix]
-    - test -f $PREFIX/lib/libggml${SHLIB_EXT}  # [unix]
+    - test -f $PREFIX/lib/libparakeet${SHLIB_EXT}  # [unix]
 
     # Unix: Test headers
     - test -f $PREFIX/include/whisper.h  # [unix]
-    - test -f $PREFIX/include/ggml.h  # [unix]
-    - test -f $PREFIX/include/gguf.h  # [unix]
+    - test -f $PREFIX/include/parakeet.h  # [unix]
 
     # Unix: Test pkg-config
     - test -f $PREFIX/lib/pkgconfig/whisper.pc  # [unix]
+    - test -f $PREFIX/lib/pkgconfig/parakeet.pc  # [unix]
 
     # Windows: Test DLLs and executables
-    - if not exist %LIBRARY_BIN%\\ggml.dll exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\whisper.dll exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\whisper-vad-speech-segments.exe exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\whisper-bench.exe exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\whisper-cli.exe exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\whisper-server.exe exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\parakeet.dll exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\parakeet-cli.exe exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\parakeet-quantize.exe exit 1  # [win]
 
     # Windows: Test libraries
-    - if not exist %LIBRARY_LIB%\\ggml.lib exit 1  # [win]
     - if not exist %LIBRARY_LIB%\\whisper.lib exit 1  # [win]
+    - if not exist %LIBRARY_LIB%\\parakeet.lib exit 1  # [win]
 
     # Windows: Test headers
     - if not exist %LIBRARY_INC%\\whisper.h exit 1  # [win]
-    - if not exist %LIBRARY_INC%\\ggml.h exit 1  # [win]
-    - if not exist %LIBRARY_INC%\\gguf.h exit 1  # [win]
+    - if not exist %LIBRARY_INC%\\parakeet.h exit 1  # [win]
 
     # Windows: Test pkg-config
     - if not exist %LIBRARY_LIB%\\pkgconfig\\whisper.pc exit 1  # [win]
-
-    # Windows MKL builds should use Intel OpenMP, not MSVC OpenMP.
-    - test-openmp.bat  # [win and blas_impl == "mkl"]
-    # Linux MKL builds should use Intel OpenMP, not GNU OpenMP.
-    - bash test-openmp.sh  # [linux and blas_impl == "mkl"]
+    - if not exist %LIBRARY_LIB%\\pkgconfig\\parakeet.pc exit 1  # [win]
 
 about:
   home: https://github.com/ggml-org/whisper.cpp
@@ -144,8 +122,9 @@ about:
     multiple languages and hardware acceleration options including Metal (Apple Silicon), CUDA (NVIDIA GPUs),
     and optimized BLAS libraries (MKL, OpenBLAS, Accelerate).
 
-    This package is built with {{ blas_impl }} for BLAS operations and {{ gpu_variant }} for GPU acceleration.
+    Hardware acceleration is provided by the installed libllama variant, which ships the shared ggml library.
   license: MIT
+  license_family: MIT
   license_file: LICENSE
 
 extra:

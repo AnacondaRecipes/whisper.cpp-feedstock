@@ -1,5 +1,5 @@
-# Whisper.cpp builds the ggml CUDA backend with many sm_* architectures
-# (sm_50–sm_121) which makes the win-64 CUDA build slow. The default
-# 2-hour task timeout is insufficient — observed timeout at step 163/178.
-# Match llama.cpp-feedstock's setting for consistency.
-max_run_time: 25200  # 7 hours
+# TEMPORARY — remove before merge. libllama 0.5.0 with the backend-loading fix
+# (AnacondaRecipes/llama.cpp-feedstock#54) is not released yet; build and test
+# against that PR's staging channel (head 6d4b554).
+channels:
+  - https://staging.continuum.io/pbp/fs/llama.cpp-feedstock/pr54/6d4b554
