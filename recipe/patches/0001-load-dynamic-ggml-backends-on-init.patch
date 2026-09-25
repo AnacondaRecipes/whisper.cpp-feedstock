@@ -1,0 +1,115 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Xianglong Kong <xkong@anaconda.com>
+Subject: [PATCH] whisper, parakeet: load dynamic ggml backends on init
+
+With a ggml built with GGML_BACKEND_DL (here: the shared ggml from libllama,
+used via WHISPER_USE_SYSTEM_GGML), no backend is registered until
+ggml_backend_load_all() is called. The bundled examples call it, but library
+callers using the documented C API (whisper_init_from_file_with_params, ...)
+find zero devices and abort with GGML_ASSERT(device) failed.
+
+Load the backends once on context/backend init when none are registered.
+No-op for a statically linked ggml, where backends are already registered.
+
+Upstream status: to be proposed to ggml-org/whisper.cpp.
+---
+  src/parakeet.cpp | 16 ++++++++++++++++
+  src/whisper.cpp  | 16 ++++++++++++++++
+  2 files changed, 32 insertions(+)
+
+diff --git a/src/parakeet.cpp b/src/parakeet.cpp
+index 1b11bee..ba0b5ee 100644
+--- a/src/parakeet.cpp
++++ b/src/parakeet.cpp
+@@ -23,6 +23,7 @@
+ #include <random>
+ #include <set>
+ #include <string>
++#include <mutex>
+ #include <thread>
+ #include <vector>
+ 
+@@ -818,6 +819,19 @@ static bool parakeet_enc_state_init(
+     return true;
+ }
+ 
++// A ggml built with GGML_BACKEND_DL (e.g. a shared system ggml) registers no
++// backends until they are loaded. The bundled examples call
++// ggml_backend_load_all() themselves; do it here for library callers too.
++// No-op when backends are already registered (statically linked ggml).
++static void parakeet_load_backends() {
++    static std::once_flag once;
++    std::call_once(once, []() {
++        if (ggml_backend_reg_count() == 0) {
++            ggml_backend_load_all();
++        }
++    });
++}
++
+ static ggml_backend_t parakeet_backend_init_gpu(const parakeet_context_params & params) {
+     ggml_log_set(g_state.log_callback, g_state.log_callback_user_data);
+ 
+@@ -858,6 +872,7 @@ static ggml_backend_t parakeet_backend_init_gpu(const parakeet_context_params &
+ }
+ 
+ static std::vector<ggml_backend_t> parakeet_backend_init(const parakeet_context_params & params) {
++    parakeet_load_backends();
+     std::vector<ggml_backend_t> result;
+ 
+     ggml_backend_t backend_gpu = parakeet_backend_init_gpu(params);
+@@ -3131,6 +3146,7 @@ struct parakeet_context * parakeet_init_from_buffer_with_params_no_state(void *
+ 
+ struct parakeet_context * parakeet_init_with_params_no_state(struct parakeet_model_loader * loader, struct parakeet_context_params params) {
+     ggml_time_init();
++    parakeet_load_backends();
+ 
+     PARAKEET_LOG_INFO("%s: use gpu    = %d\n", __func__, params.use_gpu);
+     PARAKEET_LOG_INFO("%s: gpu_device = %d\n", __func__, params.gpu_device);
+diff --git a/src/whisper.cpp b/src/whisper.cpp
+index 66130cf..9d6fb9f 100644
+--- a/src/whisper.cpp
++++ b/src/whisper.cpp
+@@ -35,6 +35,7 @@
+ #include <regex>
+ #include <set>
+ #include <string>
++#include <mutex>
+ #include <thread>
+ #include <vector>
+ 
+@@ -1295,6 +1296,19 @@ static size_t aheads_masks_nbytes(struct whisper_aheads_masks & aheads_masks) {
+     return size;
+ }
+ 
++// A ggml built with GGML_BACKEND_DL (e.g. a shared system ggml) registers no
++// backends until they are loaded. The bundled examples call
++// ggml_backend_load_all() themselves; do it here for library callers too.
++// No-op when backends are already registered (statically linked ggml).
++static void whisper_load_backends() {
++    static std::once_flag once;
++    std::call_once(once, []() {
++        if (ggml_backend_reg_count() == 0) {
++            ggml_backend_load_all();
++        }
++    });
++}
++
+ static ggml_backend_t whisper_backend_init_gpu(const whisper_context_params & params) {
+     ggml_log_set(g_state.log_callback, g_state.log_callback_user_data);
+ 
+@@ -1335,6 +1349,7 @@ static ggml_backend_t whisper_backend_init_gpu(const whisper_context_params & pa
+ }
+ 
+ static std::vector<ggml_backend_t> whisper_backend_init(const whisper_context_params & params) {
++    whisper_load_backends();
+     std::vector<ggml_backend_t> result;
+ 
+     ggml_backend_t backend_gpu = whisper_backend_init_gpu(params);
+@@ -3787,6 +3802,7 @@ struct whisper_context * whisper_init_from_buffer_with_params_no_state(void * bu
+ 
+ struct whisper_context * whisper_init_with_params_no_state(struct whisper_model_loader * loader, struct whisper_context_params params) {
+     ggml_time_init();
++    whisper_load_backends();
+ 
+     if (params.flash_attn && params.dtw_token_timestamps) {
+         WHISPER_LOG_WARN("%s: dtw_token_timestamps is not supported with flash_attn - disabling\n", __func__);

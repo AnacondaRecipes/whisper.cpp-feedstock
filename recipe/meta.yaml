@@ -1,7 +1,7 @@
 {% set name = "whisper.cpp" %}
 {% set version = "1.9.4" %}
 {% set build_number = 0 %}
-{% set llama_cpp_version = "0.4.1" %}
+{% set llama_cpp_version = "0.5.0" %}
 
 package:
   name: {{ name }}
@@ -10,6 +10,9 @@ package:
 source:
   url: https://github.com/ggml-org/{{ name }}/archive/v{{ version }}.tar.gz
   sha256: 57e280cee375ab02425b806ad5146b99f6eb9357e3c2b31357c8a6af2e2e44ae
+  patches:
+    # Library callers get no backends from a GGML_BACKEND_DL ggml unless they are loaded
+    - patches/0001-load-dynamic-ggml-backends-on-init.patch
 
 build:
   number: {{ build_number }}
@@ -43,13 +46,27 @@ requirements:
 
 test:
   requires:
-    - c-compiler
+    - {{ compiler('c') }}
+  files:
+    - test-c-api.c
+  source_files:
+    - models/for-tests-ggml-tiny.en.bin
+    - models/for-tests-ggml-parakeet-tdt.bin
+    - models/for-tests-silero-v6.2.0-ggml.bin
   commands:
     # Test command-line tools execute
     - whisper-cli --help
     - whisper-bench --help  # [not win]
     - whisper-server --help  # [not win]
     - parakeet-cli --help
+
+    # Documented C API model init (whisper, parakeet, VAD) from outside $PREFIX/bin,
+    # without the caller loading ggml backends
+    - $CC test-c-api.c -I$PREFIX/include -L$PREFIX/lib -lwhisper -lparakeet -Wl,-rpath,$PREFIX/lib -o test-c-api  # [unix]
+    - cl.exe /nologo test-c-api.c /I"%LIBRARY_INC%" /Fe:test-c-api.exe /link /LIBPATH:"%LIBRARY_LIB%" whisper.lib parakeet.lib  # [win and x86_64]
+    - clang.exe test-c-api.c -I"%LIBRARY_INC%" -L"%LIBRARY_LIB%" -lwhisper -lparakeet -o test-c-api.exe  # [win and arm64]
+    - ./test-c-api models/for-tests-ggml-tiny.en.bin models/for-tests-ggml-parakeet-tdt.bin models/for-tests-silero-v6.2.0-ggml.bin  # [unix]
+    - test-c-api.exe models\for-tests-ggml-tiny.en.bin models\for-tests-ggml-parakeet-tdt.bin models\for-tests-silero-v6.2.0-ggml.bin  # [win]
 
     # Unix: Test binaries
     # Note: upstream renamed `vad-speech-segments` → `whisper-vad-speech-segments` in 1.8.4
