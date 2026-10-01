@@ -57,11 +57,14 @@ test:
     - whisper-server --help  # [not win]
     - parakeet-cli --help
 
-    # Documented C API model init (whisper, parakeet, VAD) from outside $PREFIX/bin,
-    # without the caller loading ggml backends
-    - $CC test-c-api.c -I$PREFIX/include -L$PREFIX/lib -lwhisper -lparakeet -Wl,-rpath,$PREFIX/lib -o test-c-api  # [unix]
-    - cl.exe /nologo test-c-api.c /I"%LIBRARY_INC%" /Fe:test-c-api.exe /link /LIBPATH:"%LIBRARY_LIB%" whisper.lib parakeet.lib  # [win and x86_64]
-    - clang.exe test-c-api.c -I"%LIBRARY_INC%" -L"%LIBRARY_LIB%" -lwhisper -lparakeet -o test-c-api.exe  # [win and arm64]
+    # Documented AR shipping contract: library callers call ggml_backend_load_all() once
+    # before whisper/parakeet/vad init, from a test binary that runs outside $PREFIX/bin.
+    # ggml_backend_* symbols live in libggml; link it explicitly since the linker's
+    # --as-needed (unix) and Windows import libs don't pull it through libwhisper
+    # for symbols the test calls directly.
+    - $CC test-c-api.c -I$PREFIX/include -L$PREFIX/lib -Wl,-rpath,$PREFIX/lib -lwhisper -lparakeet -lggml -o test-c-api  # [unix]
+    - cl.exe /nologo test-c-api.c /I"%LIBRARY_INC%" /Fe:test-c-api.exe /link /LIBPATH:"%LIBRARY_LIB%" whisper.lib parakeet.lib ggml.lib  # [win and x86_64]
+    - clang.exe test-c-api.c -I"%LIBRARY_INC%" -L"%LIBRARY_LIB%" -lwhisper -lparakeet -lggml -o test-c-api.exe  # [win and arm64]
     - ./test-c-api models/for-tests-ggml-tiny.en.bin models/for-tests-ggml-parakeet-tdt.bin models/for-tests-silero-v6.2.0-ggml.bin  # [unix]
     - test-c-api.exe models\for-tests-ggml-tiny.en.bin models\for-tests-ggml-parakeet-tdt.bin models\for-tests-silero-v6.2.0-ggml.bin  # [win]
 
