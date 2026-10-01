@@ -10,9 +10,6 @@ package:
 source:
   url: https://github.com/ggml-org/{{ name }}/archive/v{{ version }}.tar.gz
   sha256: 57e280cee375ab02425b806ad5146b99f6eb9357e3c2b31357c8a6af2e2e44ae
-  patches:
-    # Library callers get no backends from a GGML_BACKEND_DL ggml unless they are loaded
-    - patches/0001-load-dynamic-ggml-backends-on-init.patch
 
 build:
   number: {{ build_number }}
