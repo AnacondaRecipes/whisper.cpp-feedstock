@@ -46,7 +46,7 @@ requirements:
 
 test:
   requires:
-    - {{ compiler('c') }}
+    - {{ compiler('c') }}  # analint: compilers_must_be_in_build  # need clang.exe on win-arm64 for test-c-api compile; bare c-compiler pulls vs2022_win-arm64 (cl.exe) instead
   files:
     - test-c-api.c
   source_files:
