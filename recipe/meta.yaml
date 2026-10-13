@@ -1,15 +1,24 @@
 {% set name = "whisper.cpp" %}
-{% set version = "1.9.4" %}
+{% set version = "1.9.5" %}
 {% set build_number = 0 %}
-{% set llama_cpp_version = "0.5.0" %}
+{% set llama_cpp_version = "0.6.0" %}
+{% set nlohmann_json_version = "3.12.0" %}
 
 package:
   name: {{ name }}
   version: {{ version }}
 
 source:
-  url: https://github.com/ggml-org/{{ name }}/archive/v{{ version }}.tar.gz
-  sha256: 57e280cee375ab02425b806ad5146b99f6eb9357e3c2b31357c8a6af2e2e44ae
+  - url: https://github.com/ggml-org/{{ name }}/archive/v{{ version }}.tar.gz
+    sha256: ff1a9053feb509ff9d7729703355541ae9690073a6b1c40eb692c962e0dc1720
+  # whisper-server compiles in cpp-httplib (bundled examples/server/httplib.h, 0.20.0, not on
+  # main) and nlohmann/json (from the host package); the tarball ships neither license.
+  - url: https://raw.githubusercontent.com/yhirose/cpp-httplib/v0.20.0/LICENSE
+    sha256: 4b45cbe16d7b71b89ae6127e26e0d90a029198ca5e958ad8e3d0b8bbed364d8b
+    folder: third_party_licenses/cpp-httplib
+  - url: https://raw.githubusercontent.com/nlohmann/json/v{{ nlohmann_json_version }}/LICENSE.MIT
+    sha256: 46a65cffd1ea955132d95a8dd921640714a8d6b537d2e4e482d31145ae95b603
+    folder: third_party_licenses/nlohmann_json
 
 build:
   number: {{ build_number }}
@@ -17,8 +26,8 @@ build:
   # plugins loaded from whichever libllama variant is installed at runtime.
   run_exports:
     - {{ pin_subpackage(name, max_pin='x.x.x') }}
-  # libllama's run_export pins its exact build (with a placeholder h1234567 hash,
-  # conda/conda-build#6100); run below accepts any variant of the same version.
+  # libllama's run_export pins the variant it was built against (cpu_<blas>_*);
+  # run below accepts any variant of the same version.
   ignore_run_exports_from:
     - libllama
 
@@ -36,6 +45,8 @@ requirements:
     # ggml comes from libllama instead of whisper.cpp's vendored copy. Its libggml /
     # libggml-base exports are identical across variants, so build against a CPU one.
     - libllama {{ llama_cpp_version }} cpu_*
+    # Header-only; replaces the bundled examples/json.hpp (see the build scripts).
+    - nlohmann_json {{ nlohmann_json_version }}
 
   run:
     # ggml has no stable ABI across releases: stay on the libllama version built against
@@ -125,7 +136,10 @@ about:
     Hardware acceleration is provided by the installed libllama variant, which ships the shared ggml library.
   license: MIT
   license_family: MIT
-  license_file: LICENSE
+  license_file:
+    - LICENSE
+    - third_party_licenses/cpp-httplib/LICENSE
+    - third_party_licenses/nlohmann_json/LICENSE.MIT
 
 extra:
   feedstock-name: whisper.cpp
