@@ -1,7 +1,7 @@
 {% set name = "whisper.cpp" %}
-{% set version = "1.9.4" %}
+{% set version = "1.9.5" %}
 {% set build_number = 0 %}
-{% set llama_cpp_version = "0.5.0" %}
+{% set llama_cpp_version = "0.6.0" %}
 
 package:
   name: {{ name }}
@@ -9,7 +9,7 @@ package:
 
 source:
   url: https://github.com/ggml-org/{{ name }}/archive/v{{ version }}.tar.gz
-  sha256: 57e280cee375ab02425b806ad5146b99f6eb9357e3c2b31357c8a6af2e2e44ae
+  sha256: ff1a9053feb509ff9d7729703355541ae9690073a6b1c40eb692c962e0dc1720
 
 build:
   number: {{ build_number }}
@@ -17,8 +17,8 @@ build:
   # plugins loaded from whichever libllama variant is installed at runtime.
   run_exports:
     - {{ pin_subpackage(name, max_pin='x.x.x') }}
-  # libllama's run_export pins its exact build (with a placeholder h1234567 hash,
-  # conda/conda-build#6100); run below accepts any variant of the same version.
+  # libllama's run_export pins the variant it was built against (cpu_<blas>_*);
+  # run below accepts any variant of the same version.
   ignore_run_exports_from:
     - libllama
 
