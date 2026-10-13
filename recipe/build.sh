@@ -9,6 +9,10 @@ fi
 
 # ggml and its BLAS / OpenMP / CUDA / Metal backends come from libllama
 # (WHISPER_USE_SYSTEM_GGML), so no GGML_* options are set here.
+# Use nlohmann_json from the host environment instead of the bundled copy:
+# whisper-server includes "json.hpp", so the bundled file becomes a forwarding header.
+echo '#include <nlohmann/json.hpp>' > examples/json.hpp
+
 CMAKE_FLAGS=(
     -S . -B build -GNinja
     ${CMAKE_ARGS}
@@ -27,4 +31,8 @@ CMAKE_FLAGS=(
 cmake "${CMAKE_FLAGS[@]}"
 
 cmake --build build --config Release --verbose
+
+# Fail if whisper-server did not pick up the packaged nlohmann_json headers.
+ninja -C build -t deps examples/server/CMakeFiles/whisper-server.dir/server.cpp.o \
+    | grep -F "${PREFIX}/include/nlohmann/json.hpp"
 cmake --install build
