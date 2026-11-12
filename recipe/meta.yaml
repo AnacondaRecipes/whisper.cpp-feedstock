@@ -1,7 +1,7 @@
 {% set name = "whisper.cpp" %}
 {% set version = "1.9.5" %}
-{% set build_number = 0 %}
-{% set llama_cpp_version = "0.6.0" %}
+{% set build_number = 1 %}
+{% set llama_cpp_version = "0.9.0" %}
 {% set nlohmann_json_version = "3.12.0" %}
 
 package:
@@ -11,6 +11,10 @@ package:
 source:
   - url: https://github.com/ggml-org/{{ name }}/archive/v{{ version }}.tar.gz
     sha256: ff1a9053feb509ff9d7729703355541ae9690073a6b1c40eb692c962e0dc1720
+    patches:
+      # Upstream b1535f5f (after 1.9.5): ggml 0.29 bounds-checks views by stride, and
+      # parakeet's rel_pos_scores view trips the assert at init. Drop at the next release.
+      - patches/0001-parakeet-use-n_frame-as-ne-1-for-rel_pos_scores.patch
   # whisper-server compiles in cpp-httplib (bundled examples/server/httplib.h, 0.20.0, not on
   # main) and nlohmann/json (from the host package); the tarball ships neither license.
   - url: https://raw.githubusercontent.com/yhirose/cpp-httplib/v0.20.0/LICENSE
@@ -84,6 +88,7 @@ test:
     - test -f $PREFIX/bin/whisper-vad-speech-segments  # [unix]
     - test -f $PREFIX/bin/whisper-bench  # [unix]
     - test -f $PREFIX/bin/whisper-cli  # [unix]
+    - test -f $PREFIX/bin/whisper-quantize  # [unix]
     - test -f $PREFIX/bin/whisper-server  # [unix]
     - test -f $PREFIX/bin/parakeet-cli  # [unix]
     - test -f $PREFIX/bin/parakeet-quantize  # [unix]
@@ -105,6 +110,7 @@ test:
     - if not exist %LIBRARY_BIN%\\whisper-vad-speech-segments.exe exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\whisper-bench.exe exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\whisper-cli.exe exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\\whisper-quantize.exe exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\whisper-server.exe exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\parakeet.dll exit 1  # [win]
     - if not exist %LIBRARY_BIN%\\parakeet-cli.exe exit 1  # [win]
